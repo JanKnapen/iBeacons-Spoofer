@@ -1,4 +1,4 @@
 flask
 flask-cors
-sqlalchemy
+sqlalchemy>=2.0
 pytest

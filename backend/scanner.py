@@ -2,7 +2,7 @@ import math
 import re
 import subprocess
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 
 IBEACON_SIGNATURE = "FF4C000215"
 
@@ -47,7 +47,7 @@ def process_packet(hex_str: str) -> dict | None:
         "rssi": rssi,
         "mac": mac,
         "distance": dist_str,
-        "last_seen": datetime.utcnow().isoformat(),
+        "last_seen": datetime.now(timezone.utc).isoformat(),
     }
 
 
