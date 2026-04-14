@@ -1,4 +1,66 @@
-from spoofer import build_payload
+from unittest.mock import patch, MagicMock
+from spoofer import build_payload, Spoofer, get_original_mac
+
+
+def test_get_original_mac_parses_hciconfig():
+    fake_output = (
+        "hci0:\tType: Primary  Bus: USB\n"
+        "\tBD Address: AA:BB:CC:DD:EE:FF  ACL MTU: 1021:8  SCO MTU: 64:1\n"
+    )
+    with patch("spoofer.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout=fake_output, returncode=0)
+        result = get_original_mac("hci0")
+    assert result == "AA:BB:CC:DD:EE:FF"
+    mock_run.assert_called_once_with(
+        ["sudo", "hciconfig", "hci0"], capture_output=True, text=True
+    )
+
+
+def test_get_original_mac_returns_none_on_failure():
+    with patch("spoofer.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout="", returncode=1)
+        result = get_original_mac("hci0")
+    assert result is None
+
+
+def test_set_random_address_sends_hci_command():
+    spoofer = Spoofer()
+    with patch.object(spoofer, "_run") as mock_run:
+        spoofer.set_random_address("hci0", "AA:BB:CC:DD:EE:FF")
+    mock_run.assert_called_once_with([
+        "sudo", "hcitool", "-i", "hci0", "cmd",
+        "0x08", "0x0005", "ff", "ee", "dd", "cc", "bb", "aa"
+    ])
+
+
+def test_start_with_spoofed_mac_uses_random_address_type():
+    spoofer = Spoofer()
+    calls = []
+    with patch.object(spoofer, "_run", side_effect=lambda cmd: calls.append(cmd)):
+        spoofer.start("hci0", "12345678-1234-1234-1234-123456789ABC", 1, 2, -59,
+                       spoofed_mac="AA:BB:CC:DD:EE:FF")
+    # First call: set random address
+    assert calls[0] == [
+        "sudo", "hcitool", "-i", "hci0", "cmd",
+        "0x08", "0x0005", "ff", "ee", "dd", "cc", "bb", "aa"
+    ]
+    # Second call: advertising params with own_address_type = 01
+    assert calls[1][7:] == [
+        "a0", "00", "a0", "00", "03",
+        "01", "00", "00", "00", "00", "00", "00", "00", "07", "00"
+    ]
+
+
+def test_start_without_spoofed_mac_uses_public_address_type():
+    spoofer = Spoofer()
+    calls = []
+    with patch.object(spoofer, "_run", side_effect=lambda cmd: calls.append(cmd)):
+        spoofer.start("hci0", "12345678-1234-1234-1234-123456789ABC", 1, 2, -59)
+    # First call: advertising params with own_address_type = 00
+    assert calls[0][7:] == [
+        "a0", "00", "a0", "00", "03",
+        "00", "00", "00", "00", "00", "00", "00", "00", "07", "00"
+    ]
 
 
 def test_build_payload_structure():
