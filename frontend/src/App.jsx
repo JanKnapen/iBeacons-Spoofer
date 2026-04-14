@@ -1,59 +1,31 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getStatus, getBeacons, getMac, setMac } from './api'
+import { getStatus, getBeacons, getMac, setMac, startScan, stopScan } from './api'
 import AdapterSelector from './components/AdapterSelector'
-import ScanControls from './components/ScanControls'
 import BeaconList from './components/BeaconList'
 import SpoofControls from './components/SpoofControls'
 import MacControls from './components/MacControls'
 
-function getState(status) {
-  if (status?.spoofing) return 'spoofing'
-  if (status?.scanning) return 'scanning'
-  return 'idle'
-}
-
-function statusLabel(status) {
-  if (!status) return 'Idle'
-  if (status.spoofing && status.spoof_target) {
-    const { uuid, major, minor } = status.spoof_target
-    return `Spoofing · ${uuid} · ${major}:${minor}`
-  }
-  if (status.scanning) return 'Scanning for beacons...'
-  return 'Idle'
-}
-
 export default function App() {
-  const [status, setStatus]               = useState(null)
-  const [beacons, setBeacons]             = useState([])
+  const [status, setStatus]                 = useState(null)
+  const [beacons, setBeacons]               = useState([])
   const [selectedBeacon, setSelectedBeacon] = useState(null)
-  const [error, setError]                 = useState(null)
-  const [macInfo, setMacInfo]             = useState(null)
+  const [error, setError]                   = useState(null)
+  const [macInfo, setMacInfo]               = useState(null)
   const pollRef = useRef(null)
 
   const refreshStatus = useCallback(async () => {
-    try {
-      const s = await getStatus()
-      setStatus(s)
-      return s
-    } catch (e) {
-      setError(e?.response?.data?.error || e.message)
-    }
+    try { const s = await getStatus(); setStatus(s); return s }
+    catch (e) { setError(e?.response?.data?.error || e.message) }
   }, [])
 
   const refreshBeacons = useCallback(async () => {
-    try {
-      setBeacons(await getBeacons())
-    } catch (e) {
-      setError(e?.response?.data?.error || e.message)
-    }
+    try { setBeacons(await getBeacons()) }
+    catch (e) { setError(e?.response?.data?.error || e.message) }
   }, [])
 
   const refreshMac = useCallback(async () => {
-    try {
-      setMacInfo(await getMac())
-    } catch (e) {
-      setError(e?.response?.data?.error || e.message)
-    }
+    try { setMacInfo(await getMac()) }
+    catch (e) { setError(e?.response?.data?.error || e.message) }
   }, [])
 
   useEffect(() => {
@@ -65,81 +37,123 @@ export default function App() {
     return () => clearInterval(pollRef.current)
   }, [status?.scanning, refreshBeacons])
 
-  useEffect(() => { refreshStatus(); refreshMac(); refreshBeacons() }, [refreshStatus, refreshMac, refreshBeacons])
+  // Load persisted beacons on mount (bug fix: was missing refreshBeacons)
+  useEffect(() => {
+    refreshStatus(); refreshMac(); refreshBeacons()
+  }, [refreshStatus, refreshMac, refreshBeacons])
 
   const handleAction = useCallback(async (fn) => {
     setError(null)
-    try {
-      const s = await fn()
-      if (s) setStatus(s)
-    } catch (e) {
-      setError(e?.response?.data?.error || e.message)
-    }
+    try { const s = await fn(); if (s) setStatus(s) }
+    catch (e) { setError(e?.response?.data?.error || e.message) }
     await refreshStatus()
     await refreshBeacons()
     await refreshMac()
   }, [refreshStatus, refreshBeacons, refreshMac])
 
-  const handleCloneMac = useCallback((mac) => {
-    handleAction(() => setMac(mac))
-  }, [handleAction])
-
+  const handleCloneMac    = useCallback((mac) => handleAction(() => setMac(mac)), [handleAction])
   const handleSelectBeacon = useCallback((beacon) => {
     setSelectedBeacon(prev => prev?.id === beacon.id ? null : beacon)
   }, [])
 
-  const state = getState(status)
-  const label = statusLabel(status)
+  const scanning = status?.scanning ?? false
+  const spoofing = status?.spoofing ?? false
 
   return (
     <div className="app-shell">
-      {/* ── Header ── */}
+
+      {/* ── Header — mirrors WHISPERPAIR bar from screenshot ── */}
       <header className="app-header">
-        <div className="app-logo">
-          <div className="app-icon">◈</div>
-          <span className="app-name">i<span className="hi">Beacon</span></span>
+        <div className="hdr-brand">
+          <span className="hdr-bticon">✦</span>
+          <span className="hdr-name">iBeacon</span>
+          {status?.adapter && (
+            <span className="hdr-badge">{status.adapter}</span>
+          )}
         </div>
-        <div className="app-status">
-          <span className="status-dot" data-state={state} />
-          <span className="status-label" data-state={state}>{label}</span>
+
+        <div className="hdr-right">
+          {/* Spoofing indicator */}
+          {spoofing && status?.spoof_target && (
+            <div className="hdr-status spoofing">
+              <span className="hdr-dot pulse" />
+              {`Broadcasting ${status.spoof_target.major}:${status.spoof_target.minor}`}
+            </div>
+          )}
+
+          {/* MAC spoofed indicator */}
+          {macInfo?.spoofed_mac && (
+            <div className="hdr-status spoofing">
+              <span className="hdr-dot" />
+              MAC Spoofed
+            </div>
+          )}
+
+          {/* Scan toggle — styled like "SCAN DEVICES" button in screenshot */}
+          {!scanning ? (
+            <button
+              className="hdr-scan-btn"
+              onClick={() => handleAction(startScan)}
+              disabled={spoofing}
+            >
+              <span style={{ fontSize: 9 }}>◎</span>
+              Scan Devices
+            </button>
+          ) : (
+            <button
+              className="hdr-scan-btn active"
+              onClick={() => handleAction(stopScan)}
+            >
+              <span className="hdr-dot pulse" />
+              Stop Scan
+            </button>
+          )}
         </div>
-        {status?.adapter && (
-          <span className="adapter-badge">{status.adapter}</span>
-        )}
       </header>
 
-      {/* ── Body ── */}
+      {/* ── Body ──────────────────────────────────────────── */}
       <div className="app-body">
         {error && (
           <div className="error-banner">
             <span>{error}</span>
             <button
               onClick={() => setError(null)}
-              style={{ background: 'transparent', border: '1px solid rgba(255,61,90,0.35)', color: 'var(--danger)', padding: '2px 9px', fontSize: 11 }}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(255,61,90,0.35)',
+                color: 'var(--danger)',
+                padding: '2px 10px',
+                fontSize: 10,
+              }}
             >
-              ✕
+              Dismiss
             </button>
           </div>
         )}
 
         <div className="app-layout">
+          {/* Left sidebar — controls (mirrors narrow left panel in screenshot) */}
+          <aside className="app-sidebar">
+            <AdapterSelector status={status} onAction={handleAction} onError={setError}>
+              <MacControls macInfo={macInfo} status={status} onAction={handleAction} />
+            </AdapterSelector>
+            <SpoofControls
+              status={status}
+              selectedBeacon={selectedBeacon}
+              onAction={handleAction}
+            />
+          </aside>
+
+          {/* Right main — beacon console (mirrors EXPLOIT CONSOLE panel) */}
           <main className="app-main">
             <BeaconList
               beacons={beacons}
               selectedBeacon={selectedBeacon}
               onSelect={handleSelectBeacon}
               onCloneMac={handleCloneMac}
-              cloneDisabled={!status || status.scanning || status.spoofing}
+              cloneDisabled={!status || scanning || spoofing}
             />
           </main>
-
-          <aside className="app-sidebar">
-            <AdapterSelector status={status} onAction={handleAction} onError={setError}>
-              <MacControls macInfo={macInfo} status={status} onAction={handleAction} />
-            </AdapterSelector>
-            <ScanControls status={status} onAction={handleAction} />
-            <SpoofControls status={status} selectedBeacon={selectedBeacon} onAction={handleAction} />
-          </aside>
         </div>
       </div>
     </div>
