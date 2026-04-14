@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getStatus, getBeacons } from './api'
+import { getStatus, getBeacons, getMac, setMac } from './api'
 import AdapterSelector from './components/AdapterSelector'
 import ScanControls from './components/ScanControls'
 import BeaconList from './components/BeaconList'
 import SpoofControls from './components/SpoofControls'
+import MacControls from './components/MacControls'
 
 function statusLabel(status) {
   if (!status) return 'Idle'
@@ -20,6 +21,7 @@ export default function App() {
   const [beacons, setBeacons]             = useState([])
   const [selectedBeacon, setSelectedBeacon] = useState(null)
   const [error, setError]                 = useState(null)
+  const [macInfo, setMacInfo]             = useState(null)
   const pollRef = useRef(null)
 
   const refreshStatus = useCallback(async () => {
@@ -40,6 +42,14 @@ export default function App() {
     }
   }, [])
 
+  const refreshMac = useCallback(async () => {
+    try {
+      setMacInfo(await getMac())
+    } catch (e) {
+      setError(e?.response?.data?.error || e.message)
+    }
+  }, [])
+
   useEffect(() => {
     if (status?.scanning) {
       pollRef.current = setInterval(refreshBeacons, 3000)
@@ -49,7 +59,7 @@ export default function App() {
     return () => clearInterval(pollRef.current)
   }, [status?.scanning, refreshBeacons])
 
-  useEffect(() => { refreshStatus() }, [refreshStatus])
+  useEffect(() => { refreshStatus(); refreshMac() }, [refreshStatus, refreshMac])
 
   const handleAction = useCallback(async (fn) => {
     setError(null)
@@ -61,7 +71,12 @@ export default function App() {
     }
     await refreshStatus()
     await refreshBeacons()
-  }, [refreshStatus, refreshBeacons])
+    await refreshMac()
+  }, [refreshStatus, refreshBeacons, refreshMac])
+
+  const handleCloneMac = useCallback((mac) => {
+    handleAction(() => setMac(mac))
+  }, [handleAction])
 
   const handleSelectBeacon = useCallback((beacon) => {
     setSelectedBeacon(prev => prev?.id === beacon.id ? null : beacon)
@@ -121,12 +136,20 @@ export default function App() {
           status={status}
           onAction={handleAction}
           onError={setError}
-        />
+        >
+          <MacControls
+            macInfo={macInfo}
+            status={status}
+            onAction={handleAction}
+          />
+        </AdapterSelector>
         <ScanControls status={status} onAction={handleAction} />
         <BeaconList
           beacons={beacons}
           selectedBeacon={selectedBeacon}
           onSelect={handleSelectBeacon}
+          onCloneMac={handleCloneMac}
+          cloneDisabled={!status || status.scanning || status.spoofing}
         />
         <SpoofControls
           status={status}

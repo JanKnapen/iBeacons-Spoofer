@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function BeaconList({ beacons, selectedBeacon, onSelect }) {
+export default function BeaconList({ beacons, selectedBeacon, onSelect, onCloneMac, cloneDisabled }) {
   const [hoveredId, setHoveredId] = useState(null)
 
   function rowBg(b) {
@@ -23,7 +23,7 @@ export default function BeaconList({ beacons, selectedBeacon, onSelect }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: 'var(--surface2)' }}>
-              {['MAC', 'UUID', 'Major', 'Minor', 'RSSI', 'TX Power', 'Distance', 'Last Seen'].map(h => (
+              {['MAC', 'UUID', 'Major', 'Minor', 'RSSI', 'TX Power', 'Distance', 'Last Seen', ''].map(h => (
                 <th key={h} style={{
                   padding: '6px 10px', textAlign: 'left',
                   color: 'var(--text-muted)', fontWeight: 500,
@@ -36,7 +36,7 @@ export default function BeaconList({ beacons, selectedBeacon, onSelect }) {
           <tbody>
             {beacons.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ padding: '16px 10px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                <td colSpan={9} style={{ padding: '16px 10px', color: 'var(--text-muted)', textAlign: 'center' }}>
                   No beacons found. Start scanning to discover nearby iBeacons.
                 </td>
               </tr>
@@ -60,6 +60,17 @@ export default function BeaconList({ beacons, selectedBeacon, onSelect }) {
                       {val ?? '—'}
                     </td>
                   ))}
+                  <td style={{ padding: '5px 10px' }}>
+                    {b.mac && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onCloneMac(b.mac) }}
+                        disabled={cloneDisabled}
+                        style={{ padding: '2px 8px', fontSize: 11 }}
+                      >
+                        Clone MAC
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))
             )}

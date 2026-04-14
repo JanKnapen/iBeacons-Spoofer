@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getAdapters, setAdapter } from '../api'
 
-export default function AdapterSelector({ status, onAction, onError }) {
+export default function AdapterSelector({ status, onAction, onError, children }) {
   const [adapters, setAdapters] = useState([])
 
   useEffect(() => {
@@ -18,18 +18,21 @@ export default function AdapterSelector({ status, onAction, onError }) {
   }
 
   return (
-    <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <label htmlFor="adapter-select">Adapter</label>
-      <select
-        id="adapter-select"
-        value={status?.adapter ?? ''}
-        onChange={handleChange}
-        disabled={disabled}
-      >
-        {adapters.map(a => (
-          <option key={a} value={a}>{a}</option>
-        ))}
-      </select>
+    <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <label htmlFor="adapter-select">Adapter</label>
+        <select
+          id="adapter-select"
+          value={status?.adapter ?? ''}
+          onChange={handleChange}
+          disabled={disabled}
+        >
+          {adapters.map(a => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+      </div>
+      {children}
     </div>
   )
 }
