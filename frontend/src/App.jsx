@@ -65,7 +65,7 @@ export default function App() {
     return () => clearInterval(pollRef.current)
   }, [status?.scanning, refreshBeacons])
 
-  useEffect(() => { refreshStatus(); refreshMac() }, [refreshStatus, refreshMac])
+  useEffect(() => { refreshStatus(); refreshMac(); refreshBeacons() }, [refreshStatus, refreshMac, refreshBeacons])
 
   const handleAction = useCallback(async (fn) => {
     setError(null)
