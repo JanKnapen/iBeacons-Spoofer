@@ -35,38 +35,63 @@ export default function SpoofControls({ status, selectedBeacon, onAction }) {
   }
 
   return (
-    <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-      {/* Selected beacon row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ color: 'var(--text-muted)', fontSize: 12, minWidth: 90 }}>Selected</span>
-        <span style={{
-          color: selectedBeacon ? 'var(--accent)' : 'var(--text-muted)',
-          fontSize: 12, flex: 1,
-        }}>
-          {selectedBeacon
-            ? `${selectedBeacon.uuid}  ·  ${selectedBeacon.major}  ·  ${selectedBeacon.minor}`
-            : 'No beacon selected — click a table row or use manual entry below'
-          }
-        </span>
+    <div className="panel">
+      <div className="panel-header">
+        <span className="panel-title">Spoof</span>
+        {spoofing && <span className="badge badge-warn">Broadcasting</span>}
       </div>
+      <div className="panel-body">
 
-      {/* Manual entry fields */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <span style={{ color: 'var(--text-muted)', fontSize: 12, minWidth: 90 }}>Manual entry</span>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>
-          <div>
-            <label>UUID</label>
+        {/* Selected beacon display */}
+        <div style={{
+          padding: '10px 12px',
+          background: 'var(--surface-high)',
+          border: `1px solid ${selectedBeacon ? 'rgba(0,204,255,0.2)' : 'var(--border)'}`,
+          borderLeft: `3px solid ${selectedBeacon ? 'var(--accent)' : 'var(--border-hi)'}`,
+          borderRadius: 4,
+        }}>
+          {selectedBeacon ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                color: 'var(--accent)',
+                wordBreak: 'break-all',
+              }}>
+                {selectedBeacon.uuid}
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)' }}>
+                Major: {selectedBeacon.major} · Minor: {selectedBeacon.minor}
+              </span>
+            </div>
+          ) : (
+            <span style={{
+              fontSize: 11,
+              color: 'var(--text-muted)',
+              letterSpacing: '0.04em',
+            }}>
+              Select a beacon row or use manual entry below
+            </span>
+          )}
+        </div>
+
+        {/* Manual entry */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span className="form-label">Manual Entry</span>
+
+          <div className="form-row">
+            <span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', minWidth: 28 }}>UUID</span>
             <input
               value={manualUUID}
               onChange={e => setManualUUID(e.target.value)}
               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              style={{ width: 280 }}
               disabled={spoofing}
+              style={{ flex: 1, minWidth: 0 }}
             />
           </div>
-          <div>
-            <label>Major</label>
+
+          <div className="form-row" style={{ gap: 6 }}>
+            <span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Maj</span>
             <input
               type="number" min={0} max={65535}
               value={manualMajor}
@@ -74,9 +99,7 @@ export default function SpoofControls({ status, selectedBeacon, onAction }) {
               style={{ width: 70 }}
               disabled={spoofing}
             />
-          </div>
-          <div>
-            <label>Minor</label>
+            <span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Min</span>
             <input
               type="number" min={0} max={65535}
               value={manualMinor}
@@ -84,28 +107,35 @@ export default function SpoofControls({ status, selectedBeacon, onAction }) {
               style={{ width: 70 }}
               disabled={spoofing}
             />
-          </div>
-          <div>
-            <label>TX Power</label>
+            <span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>TX</span>
             <input
               type="number" min={-128} max={127}
               value={manualTX}
               onChange={e => setManualTX(e.target.value)}
-              style={{ width: 70 }}
+              style={{ width: 64 }}
               disabled={spoofing}
             />
           </div>
         </div>
-      </div>
 
-      {/* Action buttons */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={handleStart} disabled={!canSpoof || spoofing}>
-          Start Spoof
-        </button>
-        <button onClick={() => onAction(stopSpoof)} disabled={!spoofing}>
-          Stop Spoof
-        </button>
+        {/* Action buttons */}
+        <div className="form-row" style={{ gap: 8 }}>
+          <button
+            onClick={handleStart}
+            disabled={!canSpoof || spoofing}
+            className={spoofing ? 'btn-warn' : canSpoof ? 'btn-primary' : ''}
+            style={{ flex: 1 }}
+          >
+            {spoofing ? '⬤ Broadcasting' : 'Start Spoof'}
+          </button>
+          <button
+            onClick={() => onAction(stopSpoof)}
+            disabled={!spoofing}
+            style={{ flex: 1 }}
+          >
+            Stop
+          </button>
+        </div>
       </div>
     </div>
   )

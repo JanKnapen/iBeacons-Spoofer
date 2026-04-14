@@ -18,21 +18,27 @@ export default function AdapterSelector({ status, onAction, onError, children })
   }
 
   return (
-    <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <label htmlFor="adapter-select">Adapter</label>
-        <select
-          id="adapter-select"
-          value={status?.adapter ?? ''}
-          onChange={handleChange}
-          disabled={disabled}
-        >
-          {adapters.map(a => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
+    <div className="panel">
+      <div className="panel-header">
+        <span className="panel-title">Interface</span>
       </div>
-      {children}
+      <div className="panel-body">
+        <div className="form-row">
+          <span className="form-label" style={{ minWidth: 52 }}>Adapter</span>
+          <select
+            id="adapter-select"
+            value={status?.adapter ?? ''}
+            onChange={handleChange}
+            disabled={disabled}
+            style={{ flex: 1 }}
+          >
+            {adapters.map(a => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        </div>
+        {children}
+      </div>
     </div>
   )
 }

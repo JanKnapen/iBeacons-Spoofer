@@ -5,20 +5,28 @@ export default function ScanControls({ status, onAction }) {
   const spoofing = status?.spoofing ?? false
 
   return (
-    <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <span style={{ color: 'var(--text-muted)', fontSize: 12, marginRight: 4 }}>Scan</span>
-      <button
-        onClick={() => onAction(startScan)}
-        disabled={scanning || spoofing}
-      >
-        Start Scan
-      </button>
-      <button
-        onClick={() => onAction(stopScan)}
-        disabled={!scanning}
-      >
-        Stop Scan
-      </button>
+    <div className="panel">
+      <div className="panel-header">
+        <span className="panel-title">Scan</span>
+        {scanning && <span className="badge badge-active">Active</span>}
+      </div>
+      <div className="panel-body" style={{ flexDirection: 'row', gap: 8 }}>
+        <button
+          className={scanning ? 'btn-active' : 'btn-primary'}
+          onClick={() => onAction(startScan)}
+          disabled={scanning || spoofing}
+          style={{ flex: 1 }}
+        >
+          {scanning ? '⬤ Scanning' : 'Start Scan'}
+        </button>
+        <button
+          onClick={() => onAction(stopScan)}
+          disabled={!scanning}
+          style={{ flex: 1 }}
+        >
+          Stop
+        </button>
+      </div>
     </div>
   )
 }

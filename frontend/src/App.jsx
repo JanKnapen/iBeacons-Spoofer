@@ -6,13 +6,19 @@ import BeaconList from './components/BeaconList'
 import SpoofControls from './components/SpoofControls'
 import MacControls from './components/MacControls'
 
+function getState(status) {
+  if (status?.spoofing) return 'spoofing'
+  if (status?.scanning) return 'scanning'
+  return 'idle'
+}
+
 function statusLabel(status) {
   if (!status) return 'Idle'
   if (status.spoofing && status.spoof_target) {
     const { uuid, major, minor } = status.spoof_target
-    return `Spoofing [${uuid}::${major}::${minor}]`
+    return `Spoofing · ${uuid} · ${major}:${minor}`
   }
-  if (status.scanning) return 'Scanning...'
+  if (status.scanning) return 'Scanning for beacons...'
   return 'Idle'
 }
 
@@ -82,80 +88,59 @@ export default function App() {
     setSelectedBeacon(prev => prev?.id === beacon.id ? null : beacon)
   }, [])
 
+  const state = getState(status)
   const label = statusLabel(status)
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 16px 40px' }}>
-
-      {/* Status bar */}
-      <div style={{
-        background: status?.spoofing ? '#1a3a1a' : status?.scanning ? '#1a2a3a' : 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
-        padding: '10px 16px',
-        marginBottom: 16,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-      }}>
-        <span style={{
-          color: status?.spoofing ? '#81c784' : status?.scanning ? 'var(--accent)' : 'var(--text-muted)',
-          fontWeight: 500,
-          fontSize: 13,
-          flex: 1,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>
-          {label}
-        </span>
-        {status && (
-          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-            {status.adapter}
-          </span>
-        )}
-      </div>
-
-      {/* Error banner */}
-      {error && (
-        <div style={{
-          background: '#2a1a1a', border: '1px solid var(--error)',
-          color: 'var(--error)', padding: '8px 14px', borderRadius: 4,
-          marginBottom: 12, display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <span>{error}</span>
-          <button onClick={() => setError(null)} style={{ marginLeft: 12, padding: '2px 8px' }}>✕</button>
+    <div className="app-shell">
+      {/* ── Header ── */}
+      <header className="app-header">
+        <div className="app-logo">
+          <div className="app-icon">◈</div>
+          <span className="app-name">i<span className="hi">Beacon</span></span>
         </div>
-      )}
+        <div className="app-status">
+          <span className="status-dot" data-state={state} />
+          <span className="status-label" data-state={state}>{label}</span>
+        </div>
+        {status?.adapter && (
+          <span className="adapter-badge">{status.adapter}</span>
+        )}
+      </header>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <AdapterSelector
-          status={status}
-          onAction={handleAction}
-          onError={setError}
-        >
-          <MacControls
-            macInfo={macInfo}
-            status={status}
-            onAction={handleAction}
-          />
-        </AdapterSelector>
-        <ScanControls status={status} onAction={handleAction} />
-        <BeaconList
-          beacons={beacons}
-          selectedBeacon={selectedBeacon}
-          onSelect={handleSelectBeacon}
-          onCloneMac={handleCloneMac}
-          cloneDisabled={!status || status.scanning || status.spoofing}
-        />
-        <SpoofControls
-          status={status}
-          selectedBeacon={selectedBeacon}
-          onAction={handleAction}
-        />
+      {/* ── Body ── */}
+      <div className="app-body">
+        {error && (
+          <div className="error-banner">
+            <span>{error}</span>
+            <button
+              onClick={() => setError(null)}
+              style={{ background: 'transparent', border: '1px solid rgba(255,61,90,0.35)', color: 'var(--danger)', padding: '2px 9px', fontSize: 11 }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        <div className="app-layout">
+          <main className="app-main">
+            <BeaconList
+              beacons={beacons}
+              selectedBeacon={selectedBeacon}
+              onSelect={handleSelectBeacon}
+              onCloneMac={handleCloneMac}
+              cloneDisabled={!status || status.scanning || status.spoofing}
+            />
+          </main>
+
+          <aside className="app-sidebar">
+            <AdapterSelector status={status} onAction={handleAction} onError={setError}>
+              <MacControls macInfo={macInfo} status={status} onAction={handleAction} />
+            </AdapterSelector>
+            <ScanControls status={status} onAction={handleAction} />
+            <SpoofControls status={status} selectedBeacon={selectedBeacon} onAction={handleAction} />
+          </aside>
+        </div>
       </div>
     </div>
   )

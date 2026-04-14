@@ -41,39 +41,46 @@ export default function MacControls({ macInfo, status, onAction }) {
   const isSpoofed = !!macInfo?.spoofed_mac
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-      <label>MAC</label>
-      <span style={{ fontSize: 13, fontFamily: 'monospace', minWidth: 140 }}>
-        {effectiveMac}
-      </span>
-      {isSpoofed && (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Current MAC display */}
+      <div className="form-row">
+        <span className="form-label" style={{ minWidth: 32 }}>MAC</span>
         <span style={{
-          fontSize: 10, padding: '1px 6px', borderRadius: 3,
-          background: '#2a3a1a', color: '#81c784', border: '1px solid #4a5a3a',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 12,
+          color: isSpoofed ? 'var(--warn)' : 'var(--text-bright)',
+          letterSpacing: '0.04em',
+          flex: 1,
         }}>
-          Spoofed
+          {effectiveMac}
         </span>
-      )}
+        {isSpoofed && <span className="badge badge-warn">Spoofed</span>}
+      </div>
 
+      {/* MAC input */}
       <input
         value={customMac}
         onChange={e => setCustomMac(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="AA:BB:CC:DD:EE:FF"
         disabled={disabled}
-        style={{ width: 160, fontFamily: 'monospace' }}
+        style={{ width: '100%' }}
       />
-      <button onClick={handleSet} disabled={disabled || !validCustom}>
-        Set
-      </button>
-      <button onClick={handleRandom} disabled={disabled}>
-        Random
-      </button>
-      {isSpoofed && (
-        <button onClick={handleReset} disabled={disabled}>
-          Reset
+
+      {/* Action buttons */}
+      <div className="form-row" style={{ gap: 6 }}>
+        <button className="btn-sm btn-primary" onClick={handleSet} disabled={disabled || !validCustom}>
+          Set
         </button>
-      )}
+        <button className="btn-sm" onClick={handleRandom} disabled={disabled}>
+          Random
+        </button>
+        {isSpoofed && (
+          <button className="btn-sm btn-warn" onClick={handleReset} disabled={disabled}>
+            Reset
+          </button>
+        )}
+      </div>
     </div>
   )
 }
