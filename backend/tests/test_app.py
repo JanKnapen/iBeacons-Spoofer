@@ -105,7 +105,7 @@ def test_scan_stop_clears_state(client):
 def test_get_beacons_returns_list(client):
     from database import upsert_beacon
     upsert_beacon({
-        "uuid": "AAAA-1234-1234-1234-123456789ABC",
+        "uuid": "AAAAAAAA-1234-1234-1234-123456789ABC",
         "major": 1, "minor": 2, "mac": "AA:BB:CC:DD:EE:FF",
         "tx_power": -59, "rssi": -61, "distance": "~1m",
         "last_seen": "2026-04-14T10:00:00"

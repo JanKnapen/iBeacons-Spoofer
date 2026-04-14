@@ -43,7 +43,10 @@ def get_adapters():
 def put_adapter():
     if state["scanning"] or state["spoofing"]:
         return jsonify({"error": "Cannot change adapter while scanning or spoofing"}), 409
-    adapter = request.json.get("adapter")
+    body = request.json or {}
+    adapter = body.get("adapter")
+    if not adapter:
+        return jsonify({"error": "adapter field is required"}), 400
     available = list_adapters()
     if adapter not in available:
         return jsonify({"error": f"Adapter {adapter!r} not found. Available: {available}"}), 400
@@ -69,7 +72,10 @@ def scan_start():
 
 @app.post("/api/scan/stop")
 def scan_stop():
-    _scanner.stop()
+    try:
+        _scanner.stop()
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
     state["scanning"] = False
     return jsonify(state)
 
