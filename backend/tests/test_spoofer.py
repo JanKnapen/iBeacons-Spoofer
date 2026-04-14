@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import patch, MagicMock
 from spoofer import build_payload, Spoofer, get_original_mac
 
@@ -103,3 +104,9 @@ def test_build_payload_tx_power_positive():
     result = build_payload("12345678-1234-1234-1234-123456789ABC", 1, 2, 0)
     parts = result.split()
     assert parts[29] == "00"
+
+
+def test_set_random_address_rejects_invalid_mac():
+    spoofer = Spoofer()
+    with pytest.raises(ValueError, match="Invalid MAC"):
+        spoofer.set_random_address("hci0", "not-a-mac")

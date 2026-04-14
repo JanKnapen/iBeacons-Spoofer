@@ -1,13 +1,15 @@
 import re
 import subprocess
 
+_MAC_RE = re.compile(r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
+
 
 def get_original_mac(adapter: str) -> str | None:
     """Read the BD Address from hciconfig output."""
     result = subprocess.run(
         ["sudo", "hciconfig", adapter], capture_output=True, text=True
     )
-    match = re.search(r"BD Address:\s+([0-9A-Fa-f:]{17})", result.stdout)
+    match = re.search(r"BD Address:\s+((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})", result.stdout)
     return match.group(1) if match else None
 
 
@@ -25,6 +27,8 @@ def build_payload(uuid: str, major: int, minor: int, tx_power: int) -> str:
 class Spoofer:
     def set_random_address(self, adapter: str, mac: str):
         """Set the BLE random address via HCI command 0x08 0x0005."""
+        if not _MAC_RE.match(mac):
+            raise ValueError(f"Invalid MAC address: {mac!r}")
         octets = mac.split(":")
         reversed_bytes = [b.lower() for b in reversed(octets)]
         self._run(["sudo", "hcitool", "-i", adapter, "cmd",
