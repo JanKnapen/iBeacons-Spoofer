@@ -8,3 +8,6 @@ export const startScan  = ()          => axios.post('/api/scan/start').then(r =>
 export const stopScan   = ()          => axios.post('/api/scan/stop').then(r => r.data)
 export const startSpoof = (payload)   => axios.post('/api/spoof/start', payload).then(r => r.data)
 export const stopSpoof  = ()          => axios.post('/api/spoof/stop').then(r => r.data)
+export const getMac    = ()          => axios.get('/api/mac').then(r => r.data)
+export const setMac    = (mac)       => axios.put('/api/mac', { mac }).then(r => r.data)
+export const resetMac  = ()          => axios.delete('/api/mac').then(r => r.data)
