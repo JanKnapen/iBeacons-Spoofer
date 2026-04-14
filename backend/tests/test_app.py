@@ -25,7 +25,10 @@ def client():
 
 @pytest.fixture(autouse=True)
 def reset_state():
-    state.update({"adapter": "hci0", "scanning": False, "spoofing": False, "spoof_target": None})
+    state.update({
+        "adapter": "hci0", "scanning": False, "spoofing": False,
+        "spoof_target": None, "original_mac": None, "spoofed_mac": None,
+    })
     yield
 
 
@@ -131,7 +134,7 @@ def test_spoof_start_sets_state(client):
             "major": 1, "minor": 2, "tx_power": -59
         })
     assert res.status_code == 200
-    mock_start.assert_called_once_with("hci0", "12345678-1234-1234-1234-123456789ABC", 1, 2, -59)
+    mock_start.assert_called_once_with("hci0", "12345678-1234-1234-1234-123456789ABC", 1, 2, -59, spoofed_mac=None)
     assert state["spoofing"] is True
     assert state["spoof_target"]["major"] == 1
 
@@ -171,3 +174,107 @@ def test_spoof_start_returns_error_on_failure(client):
         })
     assert res.status_code == 500
     assert "no adapter" in json.loads(res.data)["error"]
+
+
+# ── MAC endpoint tests ─────────────────────────────────────────────────────
+
+def test_get_mac_returns_original_and_spoofed(client):
+    state["original_mac"] = "AA:BB:CC:DD:EE:FF"
+    state["spoofed_mac"] = None
+    res = client.get("/api/mac")
+    assert res.status_code == 200
+    data = json.loads(res.data)
+    assert data["original_mac"] == "AA:BB:CC:DD:EE:FF"
+    assert data["spoofed_mac"] is None
+
+
+def test_get_mac_reads_original_on_first_call(client):
+    state["original_mac"] = None
+    with patch("app.get_original_mac", return_value="11:22:33:44:55:66") as mock:
+        res = client.get("/api/mac")
+    mock.assert_called_once_with("hci0")
+    data = json.loads(res.data)
+    assert data["original_mac"] == "11:22:33:44:55:66"
+    assert state["original_mac"] == "11:22:33:44:55:66"
+
+
+def test_put_mac_sets_spoofed_mac(client):
+    with patch("app._spoofer.set_random_address"):
+        res = client.put("/api/mac", json={"mac": "AA:BB:CC:DD:EE:FF"})
+    assert res.status_code == 200
+    data = json.loads(res.data)
+    assert data["spoofed_mac"] == "AA:BB:CC:DD:EE:FF"
+    assert state["spoofed_mac"] == "AA:BB:CC:DD:EE:FF"
+
+
+def test_put_mac_rejected_while_scanning(client):
+    state["scanning"] = True
+    res = client.put("/api/mac", json={"mac": "AA:BB:CC:DD:EE:FF"})
+    assert res.status_code == 409
+
+
+def test_put_mac_rejected_while_spoofing(client):
+    state["spoofing"] = True
+    res = client.put("/api/mac", json={"mac": "AA:BB:CC:DD:EE:FF"})
+    assert res.status_code == 409
+
+
+def test_put_mac_rejects_invalid_format(client):
+    res = client.put("/api/mac", json={"mac": "not-a-mac"})
+    assert res.status_code == 400
+
+
+def test_put_mac_rejects_missing_field(client):
+    res = client.put("/api/mac", json={})
+    assert res.status_code == 400
+
+
+def test_delete_mac_clears_spoofed(client):
+    state["spoofed_mac"] = "AA:BB:CC:DD:EE:FF"
+    res = client.delete("/api/mac")
+    assert res.status_code == 200
+    data = json.loads(res.data)
+    assert data["spoofed_mac"] is None
+    assert state["spoofed_mac"] is None
+
+
+def test_delete_mac_rejected_while_scanning(client):
+    state["scanning"] = True
+    state["spoofed_mac"] = "AA:BB:CC:DD:EE:FF"
+    res = client.delete("/api/mac")
+    assert res.status_code == 409
+
+
+def test_delete_mac_rejected_while_spoofing(client):
+    state["spoofing"] = True
+    state["spoofed_mac"] = "AA:BB:CC:DD:EE:FF"
+    res = client.delete("/api/mac")
+    assert res.status_code == 409
+
+
+def test_spoof_start_passes_spoofed_mac(client):
+    state["spoofed_mac"] = "AA:BB:CC:DD:EE:FF"
+    with patch("app._spoofer.start") as mock_start:
+        res = client.post("/api/spoof/start", json={
+            "uuid": "12345678-1234-1234-1234-123456789ABC",
+            "major": 1, "minor": 2, "tx_power": -59
+        })
+    assert res.status_code == 200
+    mock_start.assert_called_once_with(
+        "hci0", "12345678-1234-1234-1234-123456789ABC", 1, 2, -59,
+        spoofed_mac="AA:BB:CC:DD:EE:FF"
+    )
+
+
+def test_spoof_start_passes_none_when_no_spoofed_mac(client):
+    state["spoofed_mac"] = None
+    with patch("app._spoofer.start") as mock_start:
+        res = client.post("/api/spoof/start", json={
+            "uuid": "12345678-1234-1234-1234-123456789ABC",
+            "major": 1, "minor": 2, "tx_power": -59
+        })
+    assert res.status_code == 200
+    mock_start.assert_called_once_with(
+        "hci0", "12345678-1234-1234-1234-123456789ABC", 1, 2, -59,
+        spoofed_mac=None
+    )

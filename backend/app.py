@@ -6,7 +6,7 @@ from flask_cors import CORS
 
 from database import init_db, get_all_beacons, upsert_beacon
 from scanner import Scanner
-from spoofer import Spoofer
+from spoofer import Spoofer, get_original_mac
 
 app = Flask(__name__)
 CORS(app)
@@ -16,7 +16,11 @@ state = {
     "scanning": False,
     "spoofing": False,
     "spoof_target": None,
+    "original_mac": None,
+    "spoofed_mac": None,
 }
+
+_MAC_RE = re.compile(r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
 
 _scanner = Scanner(upsert_fn=upsert_beacon)
 _spoofer = Spoofer()
@@ -52,6 +56,50 @@ def put_adapter():
         return jsonify({"error": f"Adapter {adapter!r} not found. Available: {available}"}), 400
     state["adapter"] = adapter
     return jsonify(state)
+
+
+# ── MAC endpoints ──────────────────────────────────────────────────────────
+
+@app.get("/api/mac")
+def get_mac():
+    if state["original_mac"] is None:
+        state["original_mac"] = get_original_mac(state["adapter"])
+    return jsonify({
+        "original_mac": state["original_mac"],
+        "spoofed_mac": state["spoofed_mac"],
+    })
+
+
+@app.put("/api/mac")
+def put_mac():
+    if state["scanning"] or state["spoofing"]:
+        return jsonify({"error": "Cannot change MAC while scanning or spoofing"}), 409
+    body = request.json or {}
+    mac = body.get("mac")
+    if not mac:
+        return jsonify({"error": "mac field is required"}), 400
+    if not _MAC_RE.match(mac):
+        return jsonify({"error": "Invalid MAC format. Use XX:XX:XX:XX:XX:XX"}), 400
+    try:
+        _spoofer.set_random_address(state["adapter"], mac)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+    state["spoofed_mac"] = mac.upper()
+    return jsonify({
+        "original_mac": state["original_mac"],
+        "spoofed_mac": state["spoofed_mac"],
+    })
+
+
+@app.delete("/api/mac")
+def delete_mac():
+    if state["scanning"] or state["spoofing"]:
+        return jsonify({"error": "Cannot reset MAC while scanning or spoofing"}), 409
+    state["spoofed_mac"] = None
+    return jsonify({
+        "original_mac": state["original_mac"],
+        "spoofed_mac": state["spoofed_mac"],
+    })
 
 
 # ── Scan endpoints ──────────────────────────────────────────────────────────
@@ -101,7 +149,8 @@ def spoof_start():
         _scanner.stop()
         state["scanning"] = False
     try:
-        _spoofer.start(state["adapter"], uuid, int(major), int(minor), int(tx_power))
+        _spoofer.start(state["adapter"], uuid, int(major), int(minor), int(tx_power),
+                       spoofed_mac=state["spoofed_mac"])
         state["spoofing"] = True
         state["spoof_target"] = {"uuid": uuid, "major": major, "minor": minor}
         return jsonify(state)
