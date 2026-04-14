@@ -78,3 +78,75 @@ def test_process_packet_zero_tx_gives_unknown_distance():
     )
     result = process_packet(packet)
     assert result["distance"] == "?m"
+
+
+from unittest.mock import patch, MagicMock, call
+from scanner import Scanner
+
+
+def _make_hcidump_lines(packet_lines):
+    """Convert list of str lines to bytes as hcidump would emit."""
+    return [line.encode() for line in packet_lines]
+
+
+def test_scanner_start_calls_correct_subprocesses():
+    with patch("scanner.subprocess.run") as mock_run, \
+         patch("scanner.subprocess.Popen") as mock_popen:
+
+        mock_popen.return_value.stdout = iter([])
+        mock_popen.return_value.kill = MagicMock()
+
+        scanner = Scanner(upsert_fn=lambda x: None)
+        scanner.start("hci0")
+        scanner.stop()
+
+        mock_run.assert_called_once_with(
+            ["sudo", "hciconfig", "hci0", "up"], check=True
+        )
+        popen_calls = mock_popen.call_args_list
+        assert popen_calls[0][0][0] == [
+            "sudo", "hcitool", "-i", "hci0", "lescan", "--passive", "--duplicates"
+        ]
+        assert popen_calls[1][0][0] == ["sudo", "hcidump", "-i", "hci0", "-R"]
+
+
+def test_scanner_process_lines_reconstructs_packet():
+    scanner = Scanner(upsert_fn=lambda x: None)
+    lines = [
+        "> 04 3E 2B 02 01 00 01",
+        "  AA BB CC DD EE FF 1A",
+        "> NEXT LINE STARTS NEW PACKET",
+    ]
+    packets = list(scanner._process_lines(iter(lines)))
+    assert packets == [
+        "043E2B020100 01AABBCCDDEEFF1A".replace(" ", ""),
+        "NEXTLINESTARTSNEWPACKET",
+    ]
+
+
+def test_scanner_upserts_parsed_beacon():
+    upserted = []
+
+    good_lines = _make_hcidump_lines([
+        "> 04 3E 2B 02 01 00 01 AA BB CC DD EE FF 1A 02 01 06 1A FF 4C 00",
+        "  02 15 12 34 56 78 12 34 12 34 12 34 12 34 56 78 9A BC 00 01 00",
+        "  02 C5 C3",
+        "> FF",  # trigger processing of previous packet
+    ])
+
+    with patch("scanner.subprocess.run"), \
+         patch("scanner.subprocess.Popen") as mock_popen:
+
+        mock_proc = MagicMock()
+        mock_proc.stdout = iter(good_lines)
+        mock_proc.kill = MagicMock()
+        mock_popen.return_value = mock_proc
+
+        scanner = Scanner(upsert_fn=upserted.append)
+        scanner.start("hci0")
+        scanner._thread.join(timeout=2.0)
+
+    assert len(upserted) == 1
+    assert upserted[0]["uuid"] == "12345678-1234-1234-1234-123456789ABC"
+    assert upserted[0]["major"] == 1
+    assert upserted[0]["minor"] == 2
