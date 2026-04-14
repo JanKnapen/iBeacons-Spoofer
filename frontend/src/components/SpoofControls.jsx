@@ -13,7 +13,7 @@ export default function SpoofControls({ status, selectedBeacon, onAction }) {
   const spoofing = status?.spoofing ?? false
 
   // Payload priority: selected beacon row > manual fields
-  const canSpoof = !scanning && (
+  const canSpoof = !!status && !scanning && (
     selectedBeacon !== null || manualUUID.trim() !== ''
   )
 

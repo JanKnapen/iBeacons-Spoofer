@@ -1,4 +1,14 @@
+import { useState } from 'react'
+
 export default function BeaconList({ beacons, selectedBeacon, onSelect }) {
+  const [hoveredId, setHoveredId] = useState(null)
+
+  function rowBg(b) {
+    if (selectedBeacon?.id === b.id) return 'var(--selected)'
+    if (hoveredId === b.id) return 'var(--surface2)'
+    return 'transparent'
+  }
+
   return (
     <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{
@@ -35,16 +45,12 @@ export default function BeaconList({ beacons, selectedBeacon, onSelect }) {
                 <tr
                   key={b.id}
                   onClick={() => onSelect(b)}
+                  onMouseEnter={() => setHoveredId(b.id)}
+                  onMouseLeave={() => setHoveredId(null)}
                   style={{
-                    background: selectedBeacon?.id === b.id ? 'var(--selected)' : 'transparent',
+                    background: rowBg(b),
                     cursor: 'pointer',
                     borderBottom: '1px solid var(--border)',
-                  }}
-                  onMouseEnter={e => {
-                    if (selectedBeacon?.id !== b.id) e.currentTarget.style.background = 'var(--surface2)'
-                  }}
-                  onMouseLeave={e => {
-                    if (selectedBeacon?.id !== b.id) e.currentTarget.style.background = 'transparent'
                   }}
                 >
                   {[b.mac, b.uuid, b.major, b.minor, b.rssi, b.tx_power, b.distance,
