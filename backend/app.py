@@ -6,7 +6,7 @@ from flask_cors import CORS
 
 from database import init_db, get_all_beacons, upsert_beacon
 from scanner import Scanner
-from spoofer import Spoofer, get_original_mac
+from spoofer import Spoofer, get_original_mac, _MAC_RE
 
 app = Flask(__name__)
 CORS(app)
@@ -19,8 +19,6 @@ state = {
     "original_mac": None,
     "spoofed_mac": None,
 }
-
-_MAC_RE = re.compile(r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
 
 _scanner = Scanner(upsert_fn=upsert_beacon)
 _spoofer = Spoofer()
