@@ -173,7 +173,7 @@ prefix    = bytes.fromhex("0201061AFF004C000215")
 uuid_b    = bytes.fromhex(uuid.replace("-", ""))   # 16 bytes
 major_b   = major.to_bytes(2, "big")
 minor_b   = minor.to_bytes(2, "big")
-tx_b      = tx_power.to_bytes(1, signed=True, byteorder="big")
+tx_b      = tx_power.to_bytes(1, 'big', signed=True)
 payload   = prefix + uuid_b + major_b + minor_b + tx_b
 hex_bytes = " ".join(f"{b:02x}" for b in payload)
 ```
@@ -269,6 +269,8 @@ CSS variables in `index.css`:
 <username> ALL=(ALL) NOPASSWD: /usr/bin/hcitool
 <username> ALL=(ALL) NOPASSWD: /usr/sbin/hcidump
 ```
+
+> Note: `hcidump` path varies by distro. Verify with `which hcidump` and update the sudoers entry accordingly (common paths: `/usr/sbin/hcidump`, `/usr/bin/hcidump`).
 
 ### System packages
 
