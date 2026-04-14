@@ -112,6 +112,9 @@ class Scanner:
                     break
                 beacon = process_packet(hex_str)
                 if beacon:
-                    self._upsert_fn(beacon)
+                    try:
+                        self._upsert_fn(beacon)
+                    except Exception:
+                        pass  # DB errors must not kill the reader thread
         except (OSError, ValueError):
             pass  # stdout closed when process was killed

@@ -1,5 +1,7 @@
 import math
 from scanner import process_packet
+from unittest.mock import patch, MagicMock, call
+from scanner import Scanner
 
 # Full iBeacon HCI packet (hcidump -R output, stripped + uppercased):
 #  043E2B02010001  — HCI header
@@ -78,10 +80,6 @@ def test_process_packet_zero_tx_gives_unknown_distance():
     )
     result = process_packet(packet)
     assert result["distance"] == "?m"
-
-
-from unittest.mock import patch, MagicMock, call
-from scanner import Scanner
 
 
 def _make_hcidump_lines(packet_lines):
